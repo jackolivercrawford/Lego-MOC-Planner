@@ -127,6 +127,37 @@ const rebrickableColors = {
   "Dark Brown": 314
 };
 
+function cabinetMinimapSvg(cabinet, drawerCode) {
+  const row = drawerCode.charAt(0).toUpperCase();
+  const col = parseInt(drawerCode.slice(1));
+  const isRed = cabinet.toLowerCase() === 'red';
+  const cabBg = isRed ? '#8c1118' : '#111111';
+  
+  let out = `<svg viewBox="-6 -6 90 92" width="64" height="64" style="flex:none; border-radius:8px; filter:drop-shadow(0 4px 6px rgba(0,0,0,0.1))">`;
+  out += `<rect x="-6" y="-6" width="90" height="92" rx="4" fill="${cabBg}" />`;
+  
+  let y = 0;
+  ['A','B','C','D'].forEach(r => {
+    for (let c = 1; c <= 8; c++) {
+      const active = (r === row && c === col);
+      out += `<rect x="${(c-1)*10}" y="${y}" width="8" height="8" rx="1.5" fill="${active ? '#38bdf8' : 'rgba(255,255,255,0.15)'}" />`;
+    }
+    y += 10;
+  });
+  
+  y += 2;
+  ['E','F','G'].forEach(r => {
+    for (let c = 1; c <= 4; c++) {
+       const active = (r === row && c === col);
+       out += `<rect x="${(c-1)*20}" y="${y}" width="18" height="12" rx="2" fill="${active ? '#38bdf8' : 'rgba(255,255,255,0.15)'}" />`;
+    }
+    y += 14;
+  });
+  
+  out += `</svg>`;
+  return out;
+}
+
 function partSvg(part){
   const colorId = rebrickableColors[part.color] !== undefined ? rebrickableColors[part.color] : 0;
   // Use official Rebrickable LDraw renders
@@ -313,7 +344,7 @@ function currentFilteredParts(){
 function partCardMarkup(part){
   const drawer = drawersByKey.get(part.drawer_key);
   const selected = selectedPartId ? (selectedPartId === part.part_id) : (selectedDrawerKey === part.drawer_key);
-  return `<button class="part-card ${selected ? 'selected' : ''}" data-part-id="${part.part_id}" style="--card-accent:${part.group_color}">
+  return `<div class="part-card ${selected ? 'selected' : ''}" data-part-id="${part.part_id}" style="--card-accent:${part.group_color}" tabindex="0" role="button">
     <div class="part-top">
       <div class="icon-shell">${partSvg(part)}</div>
       <div>
@@ -327,7 +358,7 @@ function partCardMarkup(part){
       <span class="part-badge mono">#${escapeHtml(part.part_number)}</span>
       <span class="part-badge">${escapeHtml(drawer.size)}</span>
     </div>
-  </button>`;
+  </div>`;
 }
 function renderLegend(){
   const legend = document.getElementById('legend-row');
@@ -348,10 +379,33 @@ function renderPartsGrid(){
   }
   grid.innerHTML = filtered.map(partCardMarkup).join('');
   grid.querySelectorAll('.part-card').forEach(card => {
-    card.addEventListener('click', () => {
+    card.addEventListener('click', (e) => {
+      const existing = card.querySelector('.part-tooltip');
+      if (existing) {
+        existing.remove();
+        return;
+      }
+      document.querySelectorAll('.part-tooltip').forEach(tt => tt.remove());
+
       const part = partsData.find(p => p.part_id === card.dataset.partId);
       if (!part) return;
-      selectDrawer(part.drawer_key, part.part_id, true);
+      const drawer = drawersByKey.get(part.drawer_key);
+
+      const tooltipHTML = `
+        <div class="part-tooltip" onclick="event.stopPropagation()">
+          <button class="tooltip-close" onclick="this.parentElement.remove()" aria-label="Close tooltip">&times;</button>
+          <div class="tooltip-label">Location</div>
+          <div style="display:flex; gap:14px; align-items:center; margin-bottom:14px;">
+            ${cabinetMinimapSvg(part.cabinet, part.drawer_code)}
+            <div>
+              <div class="tooltip-cabinet">${escapeHtml(part.cabinet)} Cabinet</div>
+              <div class="tooltip-drawer" style="margin-bottom:0;">Drawer <strong>${escapeHtml(part.drawer_code)}</strong> &middot; ${escapeHtml(drawer.size)}</div>
+            </div>
+          </div>
+          <button class="tooltip-jump" onclick="selectDrawer('${part.drawer_key}', '${part.part_id}', true)">View inside cabinet &rarr;</button>
+        </div>
+      `;
+      card.insertAdjacentHTML('beforeend', tooltipHTML);
     });
   });
 }

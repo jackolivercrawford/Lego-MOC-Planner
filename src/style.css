@@ -448,7 +448,6 @@
     cursor:pointer;
     text-align:left;
     position:relative;
-    overflow:hidden;
     transition:.16s ease;
   }
   .part-card::before{
@@ -457,6 +456,7 @@
     inset:0 auto 0 0;
     width:5px;
     background:var(--card-accent, #bcc7da);
+    border-radius:16px 0 0 16px;
   }
   .part-card:hover{
     transform:translateY(-1px);
@@ -509,6 +509,55 @@
   .part-badge.mono{
     font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   }
+  .part-tooltip{
+    position:absolute;
+    top:calc(100% + 8px);left:50%;
+    transform:translateX(-50%);
+    z-index:100;
+    background:var(--panel);
+    border:1px solid var(--accent);
+    border-radius:12px;
+    padding:16px;
+    box-shadow:0 14px 38px rgba(18,31,53,0.18), 0 0 0 3px rgba(43,109,246,0.14);
+    width:90%;
+    min-width:240px;
+    max-width:260px;
+    animation:scaleIn 0.15s ease-out;
+    cursor:default;
+  }
+  @keyframes scaleIn{
+    from{opacity:0;transform:translate(-50%,-8px) scale(0.95)}
+    to{opacity:1;transform:translateX(-50%) scale(1)}
+  }
+  .tooltip-close{
+    position:absolute;
+    top:8px;right:8px;
+    width:24px;height:24px;
+    background:none;border:none;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-size:18px;color:var(--muted);
+    cursor:pointer;
+  }
+  .tooltip-close:hover{background:#f4f6fb;color:#1f2633}
+  .tooltip-label{
+    font-size:11px;color:var(--muted);
+    text-transform:uppercase;font-weight:800;
+    letter-spacing:0.05em;margin-bottom:6px;
+  }
+  .tooltip-cabinet{
+    font-size:16px;font-weight:800;color:#25324a;margin-bottom:2px;
+  }
+  .tooltip-drawer{
+    font-size:14px;color:#4a5568;margin-bottom:12px;
+  }
+  .tooltip-jump{
+    display:flex;align-items:center;justify-content:center;
+    width:100%;padding:8px;background:var(--accent);
+    color:#fff;border:none;border-radius:8px;
+    font-weight:700;font-size:13px;cursor:pointer;
+    transition:0.15s ease;
+  }
+  .tooltip-jump:hover{background:#2358c6}
   .empty-results{
     border:1px dashed #c8d2e2;
     border-radius:18px;
