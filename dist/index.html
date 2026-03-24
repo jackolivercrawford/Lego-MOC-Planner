@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LEGO Drawer Plan</title>
+  <script type="module" crossorigin src="/assets/index-DG0Ca70V.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-CSAkE2h1.css">
+</head>
+<body>
+<div class="app">
+  <header class="hero">
+    <div class="eyebrow">LEGO Organization Plan</div>
+    <h1>Interactive map for the black and red 44-drawer cabinets</h1>
+    <p>
+      Similar shapes and sizes were grouped first, color was used as a secondary ordering cue inside each zone,
+      and each drawer’s “load” was balanced with a geometry-based plastic-volume proxy so the small and large drawers
+      stay reasonably comparable relative to their size. A few outlier drawers are intentionally lighter or heavier
+      because each part/color lot stays intact in one drawer.
+    </p>
+    <div class="stats">
+      <div class="stat"><div class="label">Total pieces</div><div class="value" id="stat-pieces">6,178</div></div>
+      <div class="stat"><div class="label">Unique lots</div><div class="value" id="stat-lots">525</div></div>
+      <div class="stat"><div class="label">Small drawers</div><div class="value">64</div></div>
+      <div class="stat"><div class="label">Large drawers</div><div class="value">24</div></div>
+      <div class="stat"><div class="label">Cabinets</div><div class="value">2</div></div>
+      <div class="stat"><div class="label">Rows guide</div><div class="value">A–G</div></div>
+    </div>
+    <div class="guide">
+      <span class="guide-title">Quick row guide</span>
+      <span class="guide-chip"><span class="dot" style="background:#3A75C4"></span>A: Tiles</span>
+      <span class="guide-chip"><span class="dot" style="background:#2BA5A1"></span>B: Plates</span>
+      <span class="guide-chip"><span class="dot" style="background:#4BC0A1"></span>C: Plate specials + slopes + some bricks</span>
+      <span class="guide-chip"><span class="dot" style="background:#F08C00"></span>D: Bricks + brackets + odd small parts</span>
+      <span class="guide-chip"><span class="dot" style="background:#2BA5A1"></span>E–F: Bulk flat parts</span>
+      <span class="guide-chip"><span class="dot" style="background:#F08C00"></span>G: Oversize plates + large bricks + wedges</span>
+    </div>
+  </header>
+
+  <div class="tabs" role="tablist" aria-label="Views">
+    <button class="tab active" role="tab" aria-selected="true" data-tab="cabinet">Cabinets</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="parts">Parts index</button>
+  </div>
+
+  <section id="cabinet-panel" class="tab-panel active" role="tabpanel">
+    <div class="cabinet-layout">
+      <section class="cabinet-card black">
+        <div class="cabinet-header">
+          <div>
+            <h2>Black cabinet</h2>
+            <div class="cabinet-sub">Rows A–D small drawers · Rows E–G large drawers</div>
+          </div>
+        </div>
+        <div class="cabinet-scroll"><div class="cabinet-inner" id="black-cabinet"></div></div>
+      </section>
+
+      <section class="cabinet-card red">
+        <div class="cabinet-header">
+          <div>
+            <h2>Red cabinet</h2>
+            <div class="cabinet-sub">Rows A–D small drawers · Rows E–G large drawers</div>
+          </div>
+        </div>
+        <div class="cabinet-scroll"><div class="cabinet-inner" id="red-cabinet"></div></div>
+      </section>
+
+      <aside class="detail-panel" id="drawer-detail">
+        <div class="detail-empty">
+          <p>Select any drawer to inspect its assigned parts. Clicking a part in the index will also jump back here and highlight the drawer.</p>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <section id="parts-panel" class="tab-panel" role="tabpanel">
+    <div class="parts-panel">
+      <div class="toolbar">
+        <input id="search-input" type="search" placeholder="Search part #, description, color, drawer, or group">
+        <select id="cabinet-filter"><option value="">All cabinets</option></select>
+        <select id="size-filter">
+          <option value="">All drawer sizes</option>
+          <option value="small">Small drawers</option>
+          <option value="large">Large drawers</option>
+        </select>
+        <select id="group-filter"><option value="">All groups</option></select>
+        <select id="sort-filter">
+          <option value="drawer">Sort: drawer order</option>
+          <option value="description">Sort: description A–Z</option>
+          <option value="qty">Sort: quantity high → low</option>
+          <option value="color">Sort: color</option>
+        </select>
+      </div>
+      <div class="results-row">
+        <div id="results-count">525 lots</div>
+        <div class="legend-row" id="legend-row"></div>
+      </div>
+      <div class="parts-grid" id="parts-grid"></div>
+    </div>
+  </section>
+
+  <div class="footer-note">
+    Load percentages are based on an estimated plastic-volume proxy rather than exact measured gram weights. That keeps the drawer plan practical and consistent, but a few single-lot outliers—especially very large plates—still land heavier or lighter than average because the whole lot stays together in one drawer.
+  </div>
+</div>
+</body>
+</html>
