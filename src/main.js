@@ -269,12 +269,18 @@ function populateFilters(){
     .forEach(group => {
       groupSelect.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(group)}">${escapeHtml(group)}</option>`);
     });
+  const colorSelect = document.getElementById('color-filter');
+  const uniqueColors = [...new Set(partsData.map(p => p.color))].sort((a,b) => a.localeCompare(b));
+  uniqueColors.forEach(color => {
+    colorSelect.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(color)}">${escapeHtml(color)}</option>`);
+  });
 }
 function currentFilteredParts(){
   const term = document.getElementById('search-input').value.trim().toLowerCase();
   const cabinetValue = document.getElementById('cabinet-filter').value;
   const sizeValue = document.getElementById('size-filter').value;
   const groupValue = document.getElementById('group-filter').value;
+  const colorValue = document.getElementById('color-filter').value;
   let filtered = partsData.filter(part => {
     const hay = [
       part.part_number,
@@ -289,7 +295,8 @@ function currentFilteredParts(){
     const matchesCabinet = !cabinetValue || part.cabinet === cabinetValue;
     const matchesSize = !sizeValue || part.drawer_size === sizeValue;
     const matchesGroup = !groupValue || part.broad_group === groupValue;
-    return matchesTerm && matchesCabinet && matchesSize && matchesGroup;
+    const matchesColor = !colorValue || part.color === colorValue;
+    return matchesTerm && matchesCabinet && matchesSize && matchesGroup && matchesColor;
   });
   const sortValue = document.getElementById('sort-filter').value;
   if (sortValue === 'description'){
@@ -349,7 +356,7 @@ function renderPartsGrid(){
   });
 }
 function bindToolbar(){
-  ['search-input','cabinet-filter','size-filter','group-filter','sort-filter'].forEach(id => {
+  ['search-input','cabinet-filter','size-filter','group-filter','color-filter','sort-filter'].forEach(id => {
     document.getElementById(id).addEventListener('input', renderPartsGrid);
     document.getElementById(id).addEventListener('change', renderPartsGrid);
   });
