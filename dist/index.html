@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>LEGO Drawer Plan</title>
-  <script type="module" crossorigin src="/assets/index-BLfKx2hf.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-Bfdd9Ngd.css">
+  <script type="module" crossorigin src="/assets/index-DmBVWFjG.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-apSlgMAf.css">
 </head>
 <body>
 <div class="app">
@@ -82,6 +82,7 @@
           <option value="small">Small drawers</option>
           <option value="large">Large drawers</option>
         </select>
+        <select id="family-filter"><option value="">All color families</option></select>
         <select id="color-filter"><option value="">All colors</option></select>
         <select id="group-filter"><option value="">All groups</option></select>
         <select id="sort-filter">
@@ -90,6 +91,10 @@
           <option value="qty">Sort: quantity high → low</option>
           <option value="color">Sort: color</option>
         </select>
+        <button id="btn-scan" class="action-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          Scan
+        </button>
       </div>
       <div class="results-row">
         <div id="results-count">525 lots</div>
@@ -103,5 +108,38 @@
     Load percentages are based on an estimated plastic-volume proxy rather than exact measured gram weights. That keeps the drawer plan practical and consistent, but a few single-lot outliers—especially very large plates—still land heavier or lighter than average because the whole lot stays together in one drawer.
   </div>
 </div>
+
+<input type="file" id="file-upload" accept="image/*" style="display:none;">
+
+<div id="drag-overlay" class="drag-overlay">
+  <div class="drag-content">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+    <h2>Drop image to find parts</h2>
+    <p>Instruction manuals or photos</p>
+  </div>
+</div>
+
+<div id="ai-modal" class="modal-backdrop">
+  <div class="modal-window">
+    <header class="modal-header">
+      <h2>Scan Results</h2>
+      <button class="modal-close" id="btn-close-ai">&times;</button>
+    </header>
+    <div class="modal-body">
+      <div class="ai-layout">
+        <div class="ai-image-col">
+          <img id="ai-preview" src="" alt="Uploaded image" />
+          <div id="ai-loading" class="ai-loading">
+            <div class="spinner"></div>
+            <div>Analyzing image with Gemini...</div>
+          </div>
+        </div>
+        <div class="ai-results-col" id="ai-results">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
