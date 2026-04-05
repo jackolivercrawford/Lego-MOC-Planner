@@ -130,12 +130,16 @@ const rebrickableColors = {
 };
 
 const colorFamilies = {
-  "Black": "Grayscale", "Dark Bluish Gray": "Grayscale", "Light Bluish Gray": "Grayscale", "White": "Grayscale",
-  "Tan": "Earth & Skin", "Dark Tan": "Earth & Skin", "Nougat": "Earth & Skin", "Medium Nougat": "Earth & Skin", "Reddish Brown": "Earth & Skin", "Dark Orange": "Earth & Skin", "Dark Brown": "Earth & Skin", "Light Nougat": "Earth & Skin",
-  "Blue": "Blues", "Medium Blue": "Blues", "Bright Light Blue": "Blues", "Dark Azure": "Blues", "Sand Blue": "Blues",
-  "Green": "Greens", "Bright Green": "Greens", "Sand Green": "Greens",
-  "Red": "Reds & Purples", "Dark Red": "Reds & Purples", "Coral": "Reds & Purples", "Dark Pink": "Reds & Purples", "Medium Lavender": "Reds & Purples", "Dark Purple": "Reds & Purples",
-  "Trans-Clear": "Transparents", "Trans-Black": "Transparents", "Trans-Brown": "Transparents", "Trans-Light Blue": "Transparents", "Trans-Red": "Transparents", "Trans-Yellow": "Transparents",
+  "Black": "Blacks",
+  "Dark Bluish Gray": "Grays", "Light Bluish Gray": "Grays", "Trans-Black": "Grays",
+  "White": "Whites", "Trans-Clear": "Whites",
+  "Blue": "Blues", "Medium Blue": "Blues", "Bright Light Blue": "Blues", "Dark Azure": "Blues", "Sand Blue": "Blues", "Dark Blue": "Blues", "Dark Turquoise": "Blues", "Trans-Light Blue": "Blues",
+  "Green": "Greens", "Bright Green": "Greens", "Sand Green": "Greens", "Trans-Neon Green": "Greens",
+  "Yellow": "Yellows", "Trans-Yellow": "Yellows",
+  "Dark Orange": "Oranges",
+  "Red": "Reds", "Dark Red": "Reds", "Coral": "Reds", "Dark Pink": "Reds", "Trans-Red": "Reds",
+  "Dark Purple": "Purples", "Medium Lavender": "Purples", "Trans-Purple": "Purples",
+  "Tan": "Browns", "Dark Tan": "Browns", "Nougat": "Browns", "Medium Nougat": "Browns", "Light Nougat": "Browns", "Reddish Brown": "Browns", "Dark Brown": "Browns", "Trans-Brown": "Browns",
 };
 
 function cabinetMinimapSvg(cabinet, drawerCode) {
@@ -259,10 +263,9 @@ function partSvg(part){
   const colorId = rebrickableColors[part.color] !== undefined ? rebrickableColors[part.color] : 0;
   const url = `https://cdn.rebrickable.com/media/parts/ldraw/${colorId}/${part.part_number}.png`;
   return `
-    <img class="part-isometric-img" src="${url}" alt="${part.description}" loading="lazy" 
-         style="width:100%; height:100%; object-fit:contain; filter: drop-shadow(0px 8px 12px rgba(0,0,0,0.15)) drop-shadow(0px 4px 6px rgba(0,0,0,0.25)); transform: scale(1.15) translateY(-2px); pointer-events:none;" 
+    <img class="part-isometric-img" src="${url}" alt="${escapeHtml(part.description)}" loading="lazy"
          onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-    <div class="part-fallback-svg" style="display:none; width:100%; height:100%;">
+    <div class="part-fallback-svg">
       ${fallbackPartSvg(part)}
     </div>
   `;
@@ -404,7 +407,7 @@ function populateFilters(){
     });
     
   const familySelect = document.getElementById('family-filter');
-  const uniqueFamilies = [...new Set(Object.values(colorFamilies))].sort((a,b) => a.localeCompare(b));
+  const uniqueFamilies = [...new Set(Object.values(colorFamilies)), 'Transparents'].sort((a,b) => a.localeCompare(b));
   uniqueFamilies.forEach(fam => {
     familySelect.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(fam)}">${escapeHtml(fam)}</option>`);
   });
@@ -417,7 +420,9 @@ function updateColorOptions(familyFilter = '') {
   
   let uniqueColors = [...new Set(partsData.map(p => p.color))].sort((a,b) => a.localeCompare(b));
   if (familyFilter) {
-    uniqueColors = uniqueColors.filter(c => colorFamilies[c] === familyFilter);
+    uniqueColors = uniqueColors.filter(c =>
+      familyFilter === 'Transparents' ? c.startsWith('Trans-') : colorFamilies[c] === familyFilter
+    );
   }
   
   uniqueColors.forEach(color => {
@@ -451,7 +456,8 @@ function currentFilteredParts(){
     const matchesCabinet = !cabinetValue || part.cabinet === cabinetValue;
     const matchesSize = !sizeValue || part.drawer_size === sizeValue;
     const matchesGroup = !groupValue || part.broad_group === groupValue;
-    const matchesFamily = !familyValue || colorFamilies[part.color] === familyValue;
+    const matchesFamily = !familyValue
+      || (familyValue === 'Transparents' ? part.color.startsWith('Trans-') : colorFamilies[part.color] === familyValue);
     const matchesColor = !colorValue || part.color === colorValue;
     return matchesTerm && matchesCabinet && matchesSize && matchesGroup && matchesFamily && matchesColor;
   });
@@ -518,8 +524,8 @@ function renderPartsGrid(){
       const drawer = drawersByKey.get(part.drawer_key);
 
       const tooltipHTML = `
-        <div class="part-tooltip" onclick="event.stopPropagation()">
-          <button class="tooltip-close" onclick="this.parentElement.remove()" aria-label="Close tooltip">&times;</button>
+        <div class="part-tooltip">
+          <button class="tooltip-close" aria-label="Close tooltip">&times;</button>
           <div class="tooltip-label">Location</div>
           <div style="display:flex; gap:14px; align-items:center; margin-bottom:14px;">
             ${cabinetMinimapSvg(part.cabinet, part.drawer_code)}
@@ -528,11 +534,24 @@ function renderPartsGrid(){
               <div class="tooltip-drawer" style="margin-bottom:0;">Drawer <strong>${escapeHtml(part.drawer_code)}</strong> &middot; ${escapeHtml(drawer.size)}</div>
             </div>
           </div>
-          <button class="tooltip-jump" onclick="selectDrawer('${part.drawer_key}', '${part.part_id}', true)">View inside cabinet &rarr;</button>
+          <button class="tooltip-jump" data-drawer-key="${escapeHtml(part.drawer_key)}" data-part-id="${escapeHtml(part.part_id)}">View inside cabinet &rarr;</button>
         </div>
       `;
       card.insertAdjacentHTML('beforeend', tooltipHTML);
+
+      const tooltip = card.querySelector('.part-tooltip');
+      tooltip.addEventListener('click', (ev) => ev.stopPropagation());
+      tooltip.querySelector('.tooltip-close').addEventListener('click', () => tooltip.remove());
+      tooltip.querySelector('.tooltip-jump').addEventListener('click', (ev) => {
+        selectDrawer(ev.currentTarget.dataset.drawerKey, ev.currentTarget.dataset.partId, true);
+      });
     });
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.part-tooltip').forEach(tt => tt.remove());
+    }
   });
 }
 function bindToolbar(){
@@ -625,7 +644,7 @@ function initAi() {
         const results = await identifyLegoParts(base64Data, file.type, partsData);
         renderAiResults(results);
       } catch (err) {
-        resultsCol.innerHTML = `<div style="color:red; padding:16px;">Error: ${err.message}</div>`;
+        resultsCol.innerHTML = `<div style="color:red; padding:16px;">Error: ${escapeHtml(err.message)}</div>`;
       } finally {
         loading.style.display = 'none';
       }
@@ -655,7 +674,7 @@ function renderAiResults(results) {
     
     matchedKeys.push(part.drawer_key);
     html += `
-      <div class="ai-result-item" onclick="selectDrawer('${part.drawer_key}', '${part.part_id}', true); document.getElementById('ai-modal').classList.remove('active');">
+      <div class="ai-result-item" data-drawer-key="${escapeHtml(part.drawer_key)}" data-part-id="${escapeHtml(part.part_id)}">
         <div class="icon-shell" style="width:48px;height:48px;">
           ${partSvg(part)}
         </div>
@@ -670,8 +689,15 @@ function renderAiResults(results) {
       </div>
     `;
   });
-  
+
+  // All values in the template above are escaped via escapeHtml() — safe to assign
   resultsCol.innerHTML = html;
+  resultsCol.querySelectorAll('.ai-result-item').forEach(item => {
+    item.addEventListener('click', () => {
+      selectDrawer(item.dataset.drawerKey, item.dataset.partId, true);
+      document.getElementById('ai-modal').classList.remove('active');
+    });
+  });
   
   if (matchedKeys.length > 0) {
     document.querySelectorAll('.drawer').forEach(el => {

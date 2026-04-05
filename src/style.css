@@ -385,7 +385,7 @@
   }
   .toolbar{
     display:grid;
-    grid-template-columns:minmax(240px,1.5fr) repeat(4,minmax(130px, .8fr));
+    grid-template-columns:minmax(200px,1.5fr) repeat(6,minmax(110px,.8fr)) auto;
     gap:10px;
     margin-bottom:14px;
   }
@@ -577,11 +577,16 @@
     .cabinet-layout{grid-template-columns:1fr 1fr}
     .detail-panel{grid-column:1/-1;position:static;min-height:auto}
   }
+  @media (max-width: 1100px){
+    .toolbar{grid-template-columns:1fr 1fr 1fr;gap:8px}
+    .toolbar input{grid-column:1/-1}
+  }
   @media (max-width: 980px){
     body{padding:14px}
     .hero{padding:18px}
     .hero h1{font-size:28px}
     .toolbar{grid-template-columns:1fr 1fr}
+    .toolbar input{grid-column:1/-1}
     .cabinet-layout{grid-template-columns:1fr}
   }
   @media (max-width: 720px){
@@ -590,6 +595,17 @@
     .guide{display:block}
     .guide-title{display:block;margin-bottom:10px}
     .guide-chip{margin:0 8px 8px 0}
+  }
+
+  /* --- Part image styles --- */
+  .part-isometric-img{
+    width:100%;height:100%;object-fit:contain;
+    filter:drop-shadow(0px 8px 12px rgba(0,0,0,0.15)) drop-shadow(0px 4px 6px rgba(0,0,0,0.25));
+    transform:scale(1.15) translateY(-2px);
+    pointer-events:none;
+  }
+  .part-fallback-svg{
+    display:none;width:100%;height:100%;
   }
 
   /* --- AI Feature Styles --- */
