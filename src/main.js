@@ -92,6 +92,22 @@ const statusLabels = {
   partial: 'Partial',
   missing: 'Missing',
 };
+const inventoryStatusOrder = {
+  complete: 0,
+  partial: 1,
+  missing: 2,
+  unchecked: 3,
+};
+function sortedDrawerDetailParts(parts){
+  return parts
+    .map((part, index) => ({
+      part,
+      index,
+      rank: inventoryStatusOrder[getStatus(part.part_id, part.qty)] ?? inventoryStatusOrder.unchecked,
+    }))
+    .sort((a, b) => a.rank - b.rank || a.index - b.index)
+    .map(item => item.part);
+}
 function inventoryCountText(part){
   const status = getStatus(part.part_id, part.qty);
   if (status === 'complete') return `${statusLabels[status]} ${formatNumber(part.qty)}/${formatNumber(part.qty)}`;
@@ -399,7 +415,7 @@ function renderDrawerDetail(drawerKey){
   const fillWidth = clamp(drawer.load_pct, 0, 100);
   const detail = document.getElementById('drawer-detail');
   const noteHtml = drawer.note ? `<div class="drawer-note">${escapeHtml(drawer.note)}</div>` : '';
-  const partRows = parts.map(part => {
+  const partRows = sortedDrawerDetailParts(parts).map(part => {
     return `
     <div class="detail-part ${selectedPartId === part.part_id ? 'selected' : ''}" data-part-id="${escapeHtml(part.part_id)}" role="button" tabindex="0">
       <div class="icon-shell">${partSvg(part)}</div>
