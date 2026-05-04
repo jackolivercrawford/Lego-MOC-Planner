@@ -1,5 +1,12 @@
 import fs from 'fs';
 
+if (!process.argv.includes('--force')) {
+  console.error('split.js rewrites index.html, src/main.js, and src/style.css from lego_drawer_plan.html.');
+  console.error('That source is a legacy snapshot and may not include current app changes.');
+  console.error('Run `node split.js --force` only when you intentionally want to regenerate from that file.');
+  process.exit(1);
+}
+
 const html = fs.readFileSync('lego_drawer_plan.html', 'utf-8');
 
 // Extract CSS
