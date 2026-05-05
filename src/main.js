@@ -250,25 +250,37 @@ function inventoryOverviewLegendMarkup(summary){
   ].map(item => `<span class="overview-legend-item"><span class="overview-dot ${item.status}" aria-hidden="true"></span><span>${escapeHtml(item.label)}: ${escapeHtml(item.text)}</span></span>`).join('');
 }
 function renderInventoryOverview(){
-  const root = document.getElementById('inventory-overview');
-  if (!root) return;
+  const roots = document.querySelectorAll('[data-inventory-overview]');
+  if (!roots.length) return;
   const summary = summarizeParts(partsData);
   const uncheckedLots = Math.max(0, summary.totalLots - summary.checkedLots);
   const modeConfigs = inventoryOverviewMode === 'both'
     ? [overviewSegments(summary, 'lots'), overviewSegments(summary, 'pieces')]
     : [overviewSegments(summary, inventoryOverviewMode)];
 
-  document.getElementById('inventory-overview-summary').textContent =
-    `${formatNumber(summary.checkedLots)}/${formatNumber(summary.totalLots)} lots checked · ${formatNumber(summary.foundPieces)}/${formatNumber(summary.totalPieces)} pieces found · ${formatNumber(uncheckedLots)} lots unchecked`;
-  document.getElementById('inventory-overview-bars').innerHTML = modeConfigs.map(inventoryOverviewBarMarkup).join('');
-  document.getElementById('inventory-overview-legend').innerHTML = inventoryOverviewLegendMarkup(summary);
+  roots.forEach(root => {
+    root.querySelector('.inventory-overview-summary').textContent =
+      `${formatNumber(summary.checkedLots)}/${formatNumber(summary.totalLots)} lots checked · ${formatNumber(summary.foundPieces)}/${formatNumber(summary.totalPieces)} pieces found · ${formatNumber(uncheckedLots)} lots unchecked`;
+    root.querySelector('.inventory-overview-bars').innerHTML = modeConfigs.map(inventoryOverviewBarMarkup).join('');
+    root.querySelector('.inventory-overview-legend').innerHTML = inventoryOverviewLegendMarkup(summary);
 
-  root.dataset.mode = inventoryOverviewMode;
-  root.querySelectorAll('.overview-toggle-btn').forEach(button => {
-    const active = button.dataset.overviewMode === inventoryOverviewMode;
-    button.classList.toggle('active', active);
-    button.setAttribute('aria-pressed', String(active));
+    root.dataset.mode = inventoryOverviewMode;
+    root.querySelectorAll('.overview-toggle-btn').forEach(button => {
+      const active = button.dataset.overviewMode === inventoryOverviewMode;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', String(active));
+    });
   });
+  updateStickyInventoryOverview();
+}
+function updateStickyInventoryOverview(){
+  const source = document.getElementById('inventory-overview');
+  const sticky = document.getElementById('sticky-inventory-overview');
+  if (!source || !sticky) return;
+  const shouldPin = source.getBoundingClientRect().bottom <= 0;
+  sticky.classList.toggle('is-active', shouldPin);
+  sticky.setAttribute('aria-hidden', String(!shouldPin));
+  sticky.inert = !shouldPin;
 }
 function refreshAllViews(){
   renderInventoryOverview();
@@ -839,15 +851,15 @@ function renderPartsGrid(){
   bindInventoryControls(grid);
 }
 function bindInventoryOverview(){
-  const root = document.getElementById('inventory-overview');
-  if (!root) return;
-
-  root.querySelectorAll('.overview-toggle-btn').forEach(button => {
+  document.querySelectorAll('[data-inventory-overview] .overview-toggle-btn').forEach(button => {
     button.addEventListener('click', () => {
       saveInventoryOverviewMode(button.dataset.overviewMode);
       renderInventoryOverview();
     });
   });
+  window.addEventListener('scroll', updateStickyInventoryOverview, { passive: true });
+  window.addEventListener('resize', updateStickyInventoryOverview);
+  updateStickyInventoryOverview();
 }
 function resetFilters(){
   document.getElementById('search-input').value = '';

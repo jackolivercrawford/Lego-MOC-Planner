@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" href="data:,">
   <title>LEGO Drawer Plan</title>
-  <script type="module" crossorigin src="/assets/index-BIJ9T-Wz.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-BY64a8fg.css">
+  <script type="module" crossorigin src="/assets/index-CMICi-an.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-Cw77cVyP.css">
 </head>
 <body>
 <div class="app">
@@ -36,7 +36,7 @@
       <span class="guide-chip"><span class="dot" style="background:#2BA5A1"></span>E–F: Bulk flat parts</span>
       <span class="guide-chip"><span class="dot" style="background:#F08C00"></span>G: Oversize plates + large bricks + wedges</span>
     </div>
-    <section class="inventory-overview" id="inventory-overview" aria-labelledby="inventory-overview-title">
+    <section class="inventory-overview" id="inventory-overview" data-inventory-overview aria-labelledby="inventory-overview-title">
       <div class="inventory-overview-head">
         <div>
           <div class="inventory-overview-title" id="inventory-overview-title">Inventory overview</div>
@@ -52,6 +52,22 @@
       <div class="inventory-overview-legend" id="inventory-overview-legend"></div>
     </section>
   </header>
+
+  <section class="inventory-overview sticky-inventory-overview" id="sticky-inventory-overview" data-inventory-overview aria-labelledby="sticky-inventory-overview-title" aria-hidden="true">
+    <div class="inventory-overview-head">
+      <div>
+        <div class="inventory-overview-title" id="sticky-inventory-overview-title">Inventory overview</div>
+        <div class="inventory-overview-summary">Loading inventory status...</div>
+      </div>
+      <div class="inventory-overview-toggle" role="group" aria-label="Inventory overview scale">
+        <button type="button" class="overview-toggle-btn" data-overview-mode="lots" aria-pressed="false">Lots</button>
+        <button type="button" class="overview-toggle-btn" data-overview-mode="pieces" aria-pressed="false">Pieces</button>
+        <button type="button" class="overview-toggle-btn" data-overview-mode="both" aria-pressed="true">Both</button>
+      </div>
+    </div>
+    <div class="inventory-overview-bars"></div>
+    <div class="inventory-overview-legend"></div>
+  </section>
 
   <div class="tabs" role="tablist" aria-label="Views">
     <button class="tab active" role="tab" aria-selected="true" data-tab="cabinet">Cabinets</button>
