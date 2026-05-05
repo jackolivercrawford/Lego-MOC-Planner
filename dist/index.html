@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" href="data:,">
   <title>LEGO Drawer Plan</title>
-  <script type="module" crossorigin src="/assets/index-CMICi-an.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-Cw77cVyP.css">
+  <script type="module" crossorigin src="/assets/index-DHjabFSY.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-jQA-yEgS.css">
 </head>
 <body>
 <div class="app">
@@ -67,6 +67,32 @@
     </div>
     <div class="inventory-overview-bars"></div>
     <div class="inventory-overview-legend"></div>
+    <div class="toolbar sticky-filter-toolbar" data-sticky-filter-toolbar aria-label="Pinned parts filters">
+      <input type="search" data-filter-control="search" placeholder="Search part #, description, color, drawer, or group">
+      <select data-filter-control="cabinet"><option value="">All cabinets</option></select>
+      <select data-filter-control="size">
+        <option value="">All drawer sizes</option>
+        <option value="small">Small drawers</option>
+        <option value="large">Large drawers</option>
+      </select>
+      <select data-filter-control="family"><option value="">All color families</option></select>
+      <select data-filter-control="color"><option value="">All colors</option></select>
+      <select data-filter-control="group"><option value="">All groups</option></select>
+      <select data-filter-control="sort">
+        <option value="drawer">Sort: drawer order</option>
+        <option value="description">Sort: description A–Z</option>
+        <option value="qty">Sort: quantity high → low</option>
+        <option value="color">Sort: color</option>
+      </select>
+      <select data-filter-control="inventory">
+        <option value="">All statuses</option>
+        <option value="unchecked">Unchecked</option>
+        <option value="complete">Complete</option>
+        <option value="partial">Partial</option>
+        <option value="missing">Missing</option>
+      </select>
+      <button type="button" class="action-btn secondary-action" data-reset-filters>Reset filters</button>
+    </div>
   </section>
 
   <div class="tabs" role="tablist" aria-label="Views">
@@ -107,30 +133,30 @@
   <section id="parts-panel" class="tab-panel" role="tabpanel">
     <div class="parts-panel">
       <div class="toolbar">
-        <input id="search-input" type="search" placeholder="Search part #, description, color, drawer, or group">
-        <select id="cabinet-filter"><option value="">All cabinets</option></select>
-        <select id="size-filter">
+        <input id="search-input" type="search" data-filter-control="search" placeholder="Search part #, description, color, drawer, or group">
+        <select id="cabinet-filter" data-filter-control="cabinet"><option value="">All cabinets</option></select>
+        <select id="size-filter" data-filter-control="size">
           <option value="">All drawer sizes</option>
           <option value="small">Small drawers</option>
           <option value="large">Large drawers</option>
         </select>
-        <select id="family-filter"><option value="">All color families</option></select>
-        <select id="color-filter"><option value="">All colors</option></select>
-        <select id="group-filter"><option value="">All groups</option></select>
-        <select id="sort-filter">
+        <select id="family-filter" data-filter-control="family"><option value="">All color families</option></select>
+        <select id="color-filter" data-filter-control="color"><option value="">All colors</option></select>
+        <select id="group-filter" data-filter-control="group"><option value="">All groups</option></select>
+        <select id="sort-filter" data-filter-control="sort">
           <option value="drawer">Sort: drawer order</option>
           <option value="description">Sort: description A–Z</option>
           <option value="qty">Sort: quantity high → low</option>
           <option value="color">Sort: color</option>
         </select>
-        <select id="inventory-filter">
+        <select id="inventory-filter" data-filter-control="inventory">
           <option value="">All statuses</option>
           <option value="unchecked">Unchecked</option>
           <option value="complete">Complete</option>
           <option value="partial">Partial</option>
           <option value="missing">Missing</option>
         </select>
-        <button id="btn-reset-filters" class="action-btn secondary-action">
+        <button id="btn-reset-filters" class="action-btn secondary-action" data-reset-filters>
           Reset filters
         </button>
       </div>

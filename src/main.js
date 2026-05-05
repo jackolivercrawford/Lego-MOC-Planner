@@ -49,6 +49,18 @@ for (const [key, parts] of partsByDrawer) {
 let selectedDrawerKey = drawersData[0]?.drawer_key || null;
 let selectedPartId = null;
 let activeTab = 'cabinet';
+const defaultFilterState = {
+  search: '',
+  cabinet: '',
+  size: '',
+  family: '',
+  color: '',
+  group: '',
+  sort: 'drawer',
+  inventory: '',
+};
+let filterState = { ...defaultFilterState };
+const filterNames = Object.keys(defaultFilterState);
 
 function escapeHtml(str){
   return String(str)
@@ -279,6 +291,7 @@ function updateStickyInventoryOverview(){
   if (!source || !sticky) return;
   const shouldPin = source.getBoundingClientRect().bottom <= 0;
   sticky.classList.toggle('is-active', shouldPin);
+  sticky.classList.toggle('show-sticky-filters', shouldPin && activeTab === 'parts');
   sticky.setAttribute('aria-hidden', String(!shouldPin));
   sticky.inert = !shouldPin;
 }
@@ -345,6 +358,53 @@ const colorFamilies = {
   "Dark Purple": "Purples", "Medium Lavender": "Purples", "Trans-Purple": "Purples",
   "Tan": "Browns", "Dark Tan": "Browns", "Nougat": "Browns", "Medium Nougat": "Browns", "Light Nougat": "Browns", "Reddish Brown": "Browns", "Dark Brown": "Browns", "Trans-Brown": "Browns",
 };
+
+function filterControls(name){
+  return [...document.querySelectorAll(`[data-filter-control="${name}"]`)];
+}
+function setSelectOptions(name, options){
+  filterControls(name).forEach(select => {
+    select.innerHTML = options.map(option =>
+      `<option value="${escapeHtml(option.value)}">${escapeHtml(option.label)}</option>`
+    ).join('');
+  });
+}
+function colorsForFamily(familyFilter = ''){
+  let uniqueColors = [...new Set(partsData.map(p => p.color))].sort((a,b) => a.localeCompare(b));
+  if (familyFilter) {
+    uniqueColors = uniqueColors.filter(color =>
+      familyFilter === 'Transparents' ? color.startsWith('Trans-') : colorFamilies[color] === familyFilter
+    );
+  }
+  return uniqueColors;
+}
+function syncFilterControls(){
+  filterNames.forEach(name => {
+    filterControls(name).forEach(control => {
+      control.value = filterState[name] ?? '';
+    });
+  });
+}
+function setFilterState(name, value){
+  filterState[name] = value;
+
+  if (name === 'family') {
+    updateColorOptions(value);
+  } else if (name === 'color') {
+    if (value && colorFamilies[value]) {
+      filterState.family = colorFamilies[value];
+      updateColorOptions(filterState.family);
+      filterState.color = value;
+      syncFilterControls();
+    } else {
+      syncFilterControls();
+    }
+  } else {
+    syncFilterControls();
+  }
+
+  renderPartsGrid({ clampScroll: true });
+}
 
 function cabinetMinimapSvg(cabinet, drawerCode) {
   const row = drawerCode.charAt(0).toUpperCase();
@@ -519,6 +579,7 @@ function setTab(tabName){
   });
   document.getElementById('cabinet-panel').classList.toggle('active', tabName === 'cabinet');
   document.getElementById('parts-panel').classList.toggle('active', tabName === 'parts');
+  updateStickyInventoryOverview();
 }
 function drawLoadLabel(pct){
   if (pct >= 140) return 'dense outlier';
@@ -619,54 +680,49 @@ function selectDrawer(drawerKey, partId = null, openCabinet = false){
   renderPartsGrid();
 }
 function populateFilters(){
-  const cabinetSelect = document.getElementById('cabinet-filter');
-  ['Black','Red'].forEach(name => {
-    cabinetSelect.insertAdjacentHTML('beforeend', `<option value="${name}">${name} cabinet</option>`);
-  });
-  const groupSelect = document.getElementById('group-filter');
-  groupOrder
+  setSelectOptions('cabinet', [
+    { value: '', label: 'All cabinets' },
+    { value: 'Black', label: 'Black cabinet' },
+    { value: 'Red', label: 'Red cabinet' },
+  ]);
+  setSelectOptions('group', [
+    { value: '', label: 'All groups' },
+    ...groupOrder
     .filter(group => partsData.some(p => p.broad_group === group))
-    .forEach(group => {
-      groupSelect.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(group)}">${escapeHtml(group)}</option>`);
-    });
-    
-  const familySelect = document.getElementById('family-filter');
+    .map(group => ({ value: group, label: group })),
+  ]);
   const uniqueFamilies = [...new Set(Object.values(colorFamilies)), 'Transparents'].sort((a,b) => a.localeCompare(b));
-  uniqueFamilies.forEach(fam => {
-    familySelect.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(fam)}">${escapeHtml(fam)}</option>`);
-  });
+  setSelectOptions('family', [
+    { value: '', label: 'All color families' },
+    ...uniqueFamilies.map(fam => ({ value: fam, label: fam })),
+  ]);
+  updateColorOptions(filterState.family);
+  syncFilterControls();
 }
 
-function updateColorOptions(familyFilter = '') {
-  const colorSelect = document.getElementById('color-filter');
-  const currentVal = colorSelect.value;
-  colorSelect.innerHTML = '<option value="">All colors</option>';
-  
-  let uniqueColors = [...new Set(partsData.map(p => p.color))].sort((a,b) => a.localeCompare(b));
-  if (familyFilter) {
-    uniqueColors = uniqueColors.filter(c =>
-      familyFilter === 'Transparents' ? c.startsWith('Trans-') : colorFamilies[c] === familyFilter
-    );
+function updateColorOptions(familyFilter = filterState.family) {
+  const uniqueColors = colorsForFamily(familyFilter);
+  if (filterState.color && !uniqueColors.includes(filterState.color)) {
+    filterState.color = '';
   }
-  
-  uniqueColors.forEach(color => {
-    const isMatchedFam = colorFamilies[color] ? ` (${colorFamilies[color]})` : '';
-    colorSelect.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(color)}">${escapeHtml(color)}${familyFilter ? '' : isMatchedFam}</option>`);
-  });
-  
-  if (uniqueColors.includes(currentVal)) {
-    colorSelect.value = currentVal;
-  }
+  setSelectOptions('color', [
+    { value: '', label: 'All colors' },
+    ...uniqueColors.map(color => ({
+      value: color,
+      label: familyFilter || !colorFamilies[color] ? color : `${color} (${colorFamilies[color]})`,
+    })),
+  ]);
+  syncFilterControls();
 }
 
 function currentFilteredParts(){
-  const term = document.getElementById('search-input').value.trim().toLowerCase();
-  const cabinetValue = document.getElementById('cabinet-filter').value;
-  const sizeValue = document.getElementById('size-filter').value;
-  const groupValue = document.getElementById('group-filter').value;
-  const familyValue = document.getElementById('family-filter').value;
-  const colorValue = document.getElementById('color-filter').value;
-  const inventoryValue = document.getElementById('inventory-filter').value;
+  const term = filterState.search.trim().toLowerCase();
+  const cabinetValue = filterState.cabinet;
+  const sizeValue = filterState.size;
+  const groupValue = filterState.group;
+  const familyValue = filterState.family;
+  const colorValue = filterState.color;
+  const inventoryValue = filterState.inventory;
   let filtered = partsData.filter(part => {
     const hay = [
       part.part_number,
@@ -687,7 +743,7 @@ function currentFilteredParts(){
     const matchesInventory = !inventoryValue || getStatus(part.part_id, part.qty) === inventoryValue;
     return matchesTerm && matchesCabinet && matchesSize && matchesGroup && matchesFamily && matchesColor && matchesInventory;
   });
-  const sortValue = document.getElementById('sort-filter').value;
+  const sortValue = filterState.sort;
   if (sortValue === 'description'){
     filtered.sort((a,b) => a.description.localeCompare(b.description) || a.color.localeCompare(b.color));
   } else if (sortValue === 'qty'){
@@ -792,7 +848,19 @@ function positionPartTooltip(card, tooltip){
   tooltip.style.top = `${top}px`;
   tooltip.style.left = `${left}px`;
 }
-function renderPartsGrid(){
+function clampScrollToFilteredResults(){
+  requestAnimationFrame(() => {
+    const grid = document.getElementById('parts-grid');
+    if (!grid) return;
+    const gridBottom = window.scrollY + grid.getBoundingClientRect().bottom;
+    const lowestUsefulScroll = Math.max(0, gridBottom - window.innerHeight + 24);
+    if (window.scrollY > lowestUsefulScroll) {
+      window.scrollTo({ top: lowestUsefulScroll, behavior: 'auto' });
+      updateStickyInventoryOverview();
+    }
+  });
+}
+function renderPartsGrid(options = {}){
   const grid = document.getElementById('parts-grid');
   const filtered = currentFilteredParts();
   const summary = summarizeParts(filtered);
@@ -800,6 +868,7 @@ function renderPartsGrid(){
     `${formatNumber(filtered.length)} of ${formatNumber(partsData.length)} lots shown · ${formatNumber(summary.checkedLots)}/${formatNumber(summary.totalLots)} lots checked · ${formatNumber(summary.foundPieces)}/${formatNumber(summary.totalPieces)} pcs found`;
   if (!filtered.length){
     grid.innerHTML = `<div class="empty-results">No parts match the current search/filter combination.</div>`;
+    if (options.clampScroll) clampScrollToFilteredResults();
     return;
   }
   grid.innerHTML = filtered.map(partCardMarkup).join('');
@@ -849,6 +918,7 @@ function renderPartsGrid(){
   });
 
   bindInventoryControls(grid);
+  if (options.clampScroll) clampScrollToFilteredResults();
 }
 function bindInventoryOverview(){
   document.querySelectorAll('[data-inventory-overview] .overview-toggle-btn').forEach(button => {
@@ -862,15 +932,11 @@ function bindInventoryOverview(){
   updateStickyInventoryOverview();
 }
 function resetFilters(){
-  document.getElementById('search-input').value = '';
-  document.getElementById('cabinet-filter').value = '';
-  document.getElementById('size-filter').value = '';
-  document.getElementById('family-filter').value = '';
-  updateColorOptions('');
-  document.getElementById('color-filter').value = '';
-  document.getElementById('group-filter').value = '';
-  document.getElementById('inventory-filter').value = '';
-  renderPartsGrid();
+  const currentSort = filterState.sort;
+  filterState = { ...defaultFilterState, sort: currentSort };
+  updateColorOptions(filterState.family);
+  syncFilterControls();
+  renderPartsGrid({ clampScroll: true });
 }
 function bindLegendToggle(){
   const toggle = document.getElementById('btn-toggle-legend');
@@ -932,31 +998,16 @@ function bindInventoryActions(){
   });
 }
 function bindToolbar(){
-  ['search-input','cabinet-filter','size-filter','group-filter','sort-filter'].forEach(id => {
-    document.getElementById(id).addEventListener('input', renderPartsGrid);
-    document.getElementById(id).addEventListener('change', renderPartsGrid);
-  });
-  
-  const famFilter = document.getElementById('family-filter');
-  const colFilter = document.getElementById('color-filter');
-  
-  famFilter.addEventListener('change', (e) => {
-    updateColorOptions(e.target.value);
-    renderPartsGrid();
-  });
-  
-  colFilter.addEventListener('change', (e) => {
-    const color = e.target.value;
-    if (color && colorFamilies[color]) {
-      famFilter.value = colorFamilies[color];
-      updateColorOptions(colorFamilies[color]);
-      colFilter.value = color; // keep it selected
-    }
-    renderPartsGrid();
+  document.querySelectorAll('[data-filter-control]').forEach(control => {
+    const eventName = control.dataset.filterControl === 'search' ? 'input' : 'change';
+    control.addEventListener(eventName, event => {
+      setFilterState(control.dataset.filterControl, event.target.value);
+    });
   });
 
-  document.getElementById('inventory-filter').addEventListener('change', renderPartsGrid);
-  document.getElementById('btn-reset-filters').addEventListener('click', resetFilters);
+  document.querySelectorAll('[data-reset-filters]').forEach(button => {
+    button.addEventListener('click', resetFilters);
+  });
   bindLegendToggle();
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
@@ -1118,7 +1169,7 @@ function init(){
   renderCabinet('Black');
   renderCabinet('Red');
   populateFilters();
-  updateColorOptions('');
+  updateColorOptions(filterState.family);
   renderLegend();
   bindInventoryOverview();
   bindToolbar();
