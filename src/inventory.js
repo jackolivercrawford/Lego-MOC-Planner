@@ -133,6 +133,11 @@ export function summarizeParts(parts = []) {
     missingLots: 0,
     totalPieces: 0,
     foundPieces: 0,
+    completePieces: 0,
+    partialFoundPieces: 0,
+    partialUnfoundPieces: 0,
+    missingPieces: 0,
+    uncheckedPieces: 0,
     lotPct: 0,
     piecePct: 0,
   };
@@ -142,17 +147,25 @@ export function summarizeParts(parts = []) {
     summary.totalPieces += total;
 
     const status = getStatus(part.part_id, total);
-    if (status === 'unchecked') continue;
+    if (status === 'unchecked') {
+      summary.uncheckedPieces += total;
+      continue;
+    }
 
     summary.checkedLots++;
     if (status === 'complete') {
       summary.completeLots++;
       summary.foundPieces += total;
+      summary.completePieces += total;
     } else if (status === 'partial') {
+      const found = getFound(part.part_id, total) || 0;
       summary.partialLots++;
-      summary.foundPieces += getFound(part.part_id, total) || 0;
+      summary.foundPieces += found;
+      summary.partialFoundPieces += found;
+      summary.partialUnfoundPieces += Math.max(0, total - found);
     } else if (status === 'missing') {
       summary.missingLots++;
+      summary.missingPieces += total;
     }
   }
 

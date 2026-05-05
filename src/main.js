@@ -92,12 +92,46 @@ const statusLabels = {
   partial: 'Partial',
   missing: 'Missing',
 };
+const OVERVIEW_MODE_STORAGE_KEY = 'lego-moc-inventory-overview-mode-v1';
+const DEFAULT_OVERVIEW_MODE = 'both';
+const overviewModes = new Set(['lots', 'pieces', 'both']);
+let inventoryOverviewMode = loadInventoryOverviewMode();
+const CATEGORY_LEGEND_STORAGE_KEY = 'lego-moc-category-legend-open-v1';
+let categoryLegendOpen = loadCategoryLegendOpen();
 const inventoryStatusOrder = {
   complete: 0,
   partial: 1,
   missing: 2,
   unchecked: 3,
 };
+function loadInventoryOverviewMode(){
+  try {
+    const stored = localStorage.getItem(OVERVIEW_MODE_STORAGE_KEY);
+    return overviewModes.has(stored) ? stored : DEFAULT_OVERVIEW_MODE;
+  } catch {
+    return DEFAULT_OVERVIEW_MODE;
+  }
+}
+function saveInventoryOverviewMode(mode){
+  if (!overviewModes.has(mode)) return;
+  inventoryOverviewMode = mode;
+  try {
+    localStorage.setItem(OVERVIEW_MODE_STORAGE_KEY, mode);
+  } catch {}
+}
+function loadCategoryLegendOpen(){
+  try {
+    return localStorage.getItem(CATEGORY_LEGEND_STORAGE_KEY) === 'open';
+  } catch {
+    return false;
+  }
+}
+function saveCategoryLegendOpen(open){
+  categoryLegendOpen = Boolean(open);
+  try {
+    localStorage.setItem(CATEGORY_LEGEND_STORAGE_KEY, categoryLegendOpen ? 'open' : 'closed');
+  } catch {}
+}
 function sortedDrawerDetailParts(parts){
   return parts
     .map((part, index) => ({
@@ -163,7 +197,81 @@ function drawerProgressMarkup(summary){
     <span class="drawer-progress-segment unchecked" style="--segment-weight:${uncheckedLots}"></span>
   </div>`;
 }
+function overviewPercent(value, total){
+  return total ? Math.round((value / total) * 100) : 0;
+}
+function overviewSegments(summary, mode){
+  if (mode === 'lots') {
+    const uncheckedLots = Math.max(0, summary.totalLots - summary.checkedLots);
+    return {
+      label: 'Lots',
+      unit: 'lots',
+      total: summary.totalLots,
+      segments: [
+        { status: 'complete', label: 'Complete', value: summary.completeLots },
+        { status: 'partial', label: 'Partial', value: summary.partialLots },
+        { status: 'missing', label: 'Missing', value: summary.missingLots },
+        { status: 'unchecked', label: 'Unchecked', value: uncheckedLots },
+      ],
+    };
+  }
+
+  return {
+    label: 'Pieces',
+    unit: 'pieces',
+    total: summary.totalPieces,
+    segments: [
+      { status: 'complete', label: 'Complete', value: summary.completePieces },
+      { status: 'partial', label: 'Partial found', value: summary.partialFoundPieces },
+      { status: 'missing', label: 'Missing or not found', value: summary.missingPieces + summary.partialUnfoundPieces },
+      { status: 'unchecked', label: 'Unchecked', value: summary.uncheckedPieces },
+    ],
+  };
+}
+function inventoryOverviewBarMarkup(config){
+  const detail = config.segments
+    .map(segment => `${segment.label}: ${formatNumber(segment.value)} of ${formatNumber(config.total)} ${config.unit} (${overviewPercent(segment.value, config.total)}%)`)
+    .join(', ');
+  return `<div class="overview-bar-row">
+    <div class="overview-bar-label">${escapeHtml(config.label)}</div>
+    <div class="overview-track" role="img" aria-label="${escapeHtml(`${config.label} status distribution. ${detail}`)}" title="${escapeHtml(detail)}">
+      ${config.segments.map(segment => `<span class="overview-segment ${segment.status}" style="--segment-weight:${segment.value}" aria-hidden="true"></span>`).join('')}
+    </div>
+  </div>`;
+}
+function inventoryOverviewLegendMarkup(summary){
+  const uncheckedLots = Math.max(0, summary.totalLots - summary.checkedLots);
+  const redPieces = summary.missingPieces + summary.partialUnfoundPieces;
+  return [
+    { status: 'complete', label: 'Complete', text: `${formatNumber(summary.completeLots)} lots · ${formatNumber(summary.completePieces)} pcs` },
+    { status: 'partial', label: 'Partial', text: `${formatNumber(summary.partialLots)} lots · ${formatNumber(summary.partialFoundPieces)} found pcs` },
+    { status: 'missing', label: 'Missing/not found', text: `${formatNumber(summary.missingLots)} lots · ${formatNumber(redPieces)} not found pcs` },
+    { status: 'unchecked', label: 'Unchecked', text: `${formatNumber(uncheckedLots)} lots · ${formatNumber(summary.uncheckedPieces)} pcs` },
+  ].map(item => `<span class="overview-legend-item"><span class="overview-dot ${item.status}" aria-hidden="true"></span><span>${escapeHtml(item.label)}: ${escapeHtml(item.text)}</span></span>`).join('');
+}
+function renderInventoryOverview(){
+  const root = document.getElementById('inventory-overview');
+  if (!root) return;
+  const summary = summarizeParts(partsData);
+  const uncheckedLots = Math.max(0, summary.totalLots - summary.checkedLots);
+  const modeConfigs = inventoryOverviewMode === 'both'
+    ? [overviewSegments(summary, 'lots'), overviewSegments(summary, 'pieces')]
+    : [overviewSegments(summary, inventoryOverviewMode)];
+
+  document.getElementById('inventory-overview-summary').textContent =
+    `${formatNumber(summary.checkedLots)}/${formatNumber(summary.totalLots)} lots checked · ${formatNumber(summary.foundPieces)}/${formatNumber(summary.totalPieces)} pieces found · ${formatNumber(uncheckedLots)} lots unchecked`;
+  document.getElementById('inventory-overview-bars').innerHTML = modeConfigs.map(inventoryOverviewBarMarkup).join('');
+  document.getElementById('inventory-overview-legend').innerHTML = inventoryOverviewLegendMarkup(summary);
+
+  root.dataset.mode = inventoryOverviewMode;
+  root.querySelectorAll('.overview-toggle-btn').forEach(button => {
+    const active = button.dataset.overviewMode === inventoryOverviewMode;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+  });
+}
 function refreshAllViews(){
+  renderInventoryOverview();
   renderCabinet('Black');
   renderCabinet('Red');
   refreshDrawerSelection(false);
@@ -609,6 +717,18 @@ function renderLegend(){
       const match = drawersData.find(d => d.group === group);
       return `<span class="legend-pill"><span class="dot" style="background:${match.group_color}"></span>${escapeHtml(groupShort[group] || group)}</span>`;
     }).join('');
+  renderLegendState();
+}
+function renderLegendState(){
+  const legend = document.getElementById('legend-row');
+  const toggle = document.getElementById('btn-toggle-legend');
+  if (legend) {
+    legend.hidden = !categoryLegendOpen;
+  }
+  if (toggle) {
+    toggle.textContent = categoryLegendOpen ? 'Hide categories' : 'Show categories';
+    toggle.setAttribute('aria-expanded', String(categoryLegendOpen));
+  }
 }
 function updateInventory(partId, status, qty, found = null){
   const part = partsData.find(p => p.part_id === partId);
@@ -718,6 +838,87 @@ function renderPartsGrid(){
 
   bindInventoryControls(grid);
 }
+function bindInventoryOverview(){
+  const root = document.getElementById('inventory-overview');
+  if (!root) return;
+
+  root.querySelectorAll('.overview-toggle-btn').forEach(button => {
+    button.addEventListener('click', () => {
+      saveInventoryOverviewMode(button.dataset.overviewMode);
+      renderInventoryOverview();
+    });
+  });
+}
+function resetFilters(){
+  document.getElementById('search-input').value = '';
+  document.getElementById('cabinet-filter').value = '';
+  document.getElementById('size-filter').value = '';
+  document.getElementById('family-filter').value = '';
+  updateColorOptions('');
+  document.getElementById('color-filter').value = '';
+  document.getElementById('group-filter').value = '';
+  document.getElementById('inventory-filter').value = '';
+  renderPartsGrid();
+}
+function bindLegendToggle(){
+  const toggle = document.getElementById('btn-toggle-legend');
+  if (!toggle) return;
+  toggle.addEventListener('click', () => {
+    saveCategoryLegendOpen(!categoryLegendOpen);
+    renderLegendState();
+  });
+}
+function bindInventoryActions(){
+  const actionsToggle = document.getElementById('btn-inventory-actions');
+  const actionsMenu = document.getElementById('inventory-actions-menu');
+  const resetButton = document.getElementById('btn-reset-inventory');
+  const modal = document.getElementById('reset-inventory-modal');
+  const closeButton = document.getElementById('btn-close-reset-inventory');
+  const cancelButton = document.getElementById('btn-cancel-reset-inventory');
+  const confirmButton = document.getElementById('btn-confirm-reset-inventory');
+  if (!actionsToggle || !actionsMenu || !resetButton || !modal || !closeButton || !cancelButton || !confirmButton) return;
+
+  const closeMenu = () => {
+    actionsMenu.classList.remove('active');
+    actionsToggle.setAttribute('aria-expanded', 'false');
+  };
+  const openModal = () => {
+    closeMenu();
+    modal.classList.add('active');
+    confirmButton.focus();
+  };
+  const closeModal = () => {
+    modal.classList.remove('active');
+    actionsToggle.focus();
+  };
+
+  actionsToggle.addEventListener('click', event => {
+    event.stopPropagation();
+    const active = actionsMenu.classList.toggle('active');
+    actionsToggle.setAttribute('aria-expanded', String(active));
+  });
+  actionsMenu.addEventListener('click', event => event.stopPropagation());
+  resetButton.addEventListener('click', openModal);
+  closeButton.addEventListener('click', closeModal);
+  cancelButton.addEventListener('click', closeModal);
+  modal.addEventListener('click', event => {
+    if (event.target === modal) closeModal();
+  });
+  confirmButton.addEventListener('click', () => {
+    resetAll();
+    closeModal();
+    refreshAllViews();
+  });
+  document.addEventListener('click', closeMenu);
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Escape') return;
+    if (modal.classList.contains('active')) {
+      closeModal();
+    } else {
+      closeMenu();
+    }
+  });
+}
 function bindToolbar(){
   ['search-input','cabinet-filter','size-filter','group-filter','sort-filter'].forEach(id => {
     document.getElementById(id).addEventListener('input', renderPartsGrid);
@@ -743,34 +944,14 @@ function bindToolbar(){
   });
 
   document.getElementById('inventory-filter').addEventListener('change', renderPartsGrid);
+  document.getElementById('btn-reset-filters').addEventListener('click', resetFilters);
+  bindLegendToggle();
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       document.querySelectorAll('.part-tooltip').forEach(tt => tt.remove());
     }
   });
-
-  const resetBtn = document.getElementById('btn-reset-inventory');
-  let resetPending = false;
-  let resetTimer = null;
-  resetBtn.addEventListener('click', () => {
-    if (resetPending) {
-      resetAll();
-      resetBtn.textContent = 'Reset inventory';
-      resetBtn.classList.remove('confirming');
-      resetPending = false;
-      clearTimeout(resetTimer);
-      refreshAllViews();
-    } else {
-      resetPending = true;
-      resetBtn.textContent = 'Click again to confirm';
-      resetBtn.classList.add('confirming');
-      resetTimer = setTimeout(() => {
-        resetBtn.textContent = 'Reset inventory';
-        resetBtn.classList.remove('confirming');
-        resetPending = false;
-      }, 3000);
-    }
-  });
+  bindInventoryActions();
 }
 function bindTabs(){
   document.querySelectorAll('.tab').forEach(tab => {
@@ -820,7 +1001,7 @@ function initAi() {
     }
   });
 
-  btnScan.addEventListener('click', () => fileInput.click());
+  btnScan?.addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', (e) => {
     if (e.target.files && e.target.files.length > 0) {
       processImage(e.target.files[0]);
@@ -927,8 +1108,10 @@ function init(){
   populateFilters();
   updateColorOptions('');
   renderLegend();
+  bindInventoryOverview();
   bindToolbar();
   bindTabs();
+  renderInventoryOverview();
   refreshDrawerSelection(false);
   renderPartsGrid();
   initAi();
