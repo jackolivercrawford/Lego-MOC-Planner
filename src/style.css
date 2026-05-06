@@ -518,13 +518,15 @@
   .icon-shell{
     width:56px;
     height:56px;
-    border-radius:14px;
-    background:linear-gradient(180deg,#ffffff,#f0f4fa);
-    border:1px solid #e5ebf5;
+    border-radius:8px;
+    background:#f8fafc;
+    border:1px solid #e1e8f2;
+    box-shadow:0 1px 2px rgba(20,33,54,.08);
     display:flex;
     align-items:center;
     justify-content:center;
     flex:none;
+    overflow:hidden;
   }
   .detail-copy{
     min-width:0;
@@ -881,7 +883,7 @@
     .sticky-inventory-overview{padding:10px 12px 12px}
     .detail-panel{max-width:100vw;overflow-x:hidden}
     .detail-part{grid-template-columns:42px minmax(0,1fr);gap:8px;padding:8px;align-items:start}
-    .detail-part .icon-shell{width:42px;height:42px;border-radius:10px}
+    .detail-part .icon-shell{width:42px;height:42px;border-radius:7px}
     .detail-part-actions{grid-column:1/-1;gap:4px;justify-content:space-between}
     .results-row{display:grid;gap:10px}
     .parts-header-actions{justify-content:space-between;width:100%}
@@ -1014,12 +1016,23 @@
   /* --- Part image styles --- */
   .part-isometric-img{
     width:100%;height:100%;object-fit:contain;
-    filter:drop-shadow(0px 8px 12px rgba(0,0,0,0.15)) drop-shadow(0px 4px 6px rgba(0,0,0,0.25));
-    transform:scale(1.15) translateY(-2px);
+    display:block;
+    filter:none;
+    transform:none;
+    padding:6px;
+    box-sizing:border-box;
     pointer-events:none;
   }
   .part-fallback-svg{
     display:none;width:100%;height:100%;
+    padding:6px;
+    box-sizing:border-box;
+  }
+  .part-fallback-svg.visible{display:block}
+  .part-fallback-svg svg{
+    width:100%;
+    height:100%;
+    display:block;
   }
 
   /* --- AI Feature Styles --- */

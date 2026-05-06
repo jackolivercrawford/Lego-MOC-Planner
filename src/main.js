@@ -92,6 +92,9 @@ function luminance(hex){
 function textOn(hex){
   return luminance(hex) > 0.58 ? '#1b2432' : '#ffffff';
 }
+function imagePartNumber(part){
+  return imagePartNumberAliases[part.part_number] || part.part_number;
+}
 function formatNumber(n){
   return Number(n).toLocaleString();
 }
@@ -346,6 +349,65 @@ const rebrickableColors = {
   "Dark Brown": 314
 };
 
+const bricklinkColors = {
+  "White": 1,
+  "Tan": 2,
+  "Yellow": 3,
+  "Red": 5,
+  "Green": 6,
+  "Blue": 7,
+  "Black": 11,
+  "Trans-Clear": 12,
+  "Trans-Black": 13,
+  "Trans-Brown": 13,
+  "Trans-Light Blue": 15,
+  "Trans-Neon Green": 16,
+  "Trans-Red": 17,
+  "Trans-Yellow": 19,
+  "Nougat": 28,
+  "Bright Green": 36,
+  "Dark Turquoise": 39,
+  "Medium Blue": 42,
+  "Dark Pink": 47,
+  "Sand Green": 48,
+  "Trans-Purple": 51,
+  "Sand Blue": 55,
+  "Dark Red": 59,
+  "Dark Blue": 63,
+  "Dark Orange": 68,
+  "Dark Tan": 69,
+  "Dark Bluish Gray": 85,
+  "Light Bluish Gray": 86,
+  "Reddish Brown": 88,
+  "Dark Purple": 89,
+  "Light Nougat": 90,
+  "Bright Light Blue": 105,
+  "Dark Brown": 120,
+  "Medium Nougat": 150,
+  "Dark Azure": 153,
+  "Medium Lavender": 157,
+  "Coral": 220,
+};
+const imagePartNumberAliases = {
+  "3069a": "3069",
+  "2421b": "2412b",
+};
+const forceFallbackFirstPartNumbers = new Set([
+  "26604",
+  "63864",
+  "87079",
+  "2412b",
+  "2421b",
+  "25269",
+  "26601",
+  "61409",
+  "22388",
+  "99780",
+  "99207",
+  "54200",
+  "85984",
+]);
+
 const colorFamilies = {
   "Black": "Blacks",
   "Dark Bluish Gray": "Grays", "Light Bluish Gray": "Grays", "Trans-Black": "Grays",
@@ -437,98 +499,206 @@ function cabinetMinimapSvg(cabinet, drawerCode) {
   return out;
 }
 
-function fallbackPartSvg(part){
+function partImagePalette(part){
   const fill = part.color_hex;
-  const top = shade(fill, 18);
-  const stroke = shade(fill, -24);
-  const shadow = shade(fill, -12);
-  const opacity = part.color.startsWith('Trans-') ? 0.58 : 1;
-  const len = clamp(Math.round(part.length || 1), 1, 6);
-  const baseW = clamp(18 + len * 5, 18, 48);
-  const x = Math.round((64 - baseW) / 2);
+  const isTransparent = part.color.startsWith('Trans-');
+  const isLight = luminance(fill) > 0.72 || isTransparent;
+  return {
+    fill,
+    top: isLight ? '#ffffff' : shade(fill, 20),
+    side: isLight ? shade(fill, -7) : shade(fill, -10),
+    front: isLight ? shade(fill, -12) : shade(fill, -18),
+    stroke: isLight ? '#9aa6b5' : shade(fill, -34),
+    shadow: 'transparent',
+    opacity: isTransparent ? 0.64 : 1,
+  };
+}
+function isoBlockMarkup({x=16, y=13, w=30, d=9, h=10, r=0, palette, studs=0, tile=false, sideStud=false, grooves=0, clip=false, rail=false}){
+  const topPoints = `${x},${y} ${x+w},${y} ${x+w+d},${y+d} ${x+d},${y+d}`;
+  const frontPoints = `${x+d},${y+d} ${x+w+d},${y+d} ${x+w+d},${y+d+h} ${x+d},${y+d+h}`;
+  const sidePoints = `${x+w},${y} ${x+w+d},${y+d} ${x+w+d},${y+d+h} ${x+w},${y+h}`;
+  const studItems = !tile && studs
+    ? Array.from({length: studs}, (_, i) => {
+        const spread = studs === 1 ? 0 : (w - 12) / (studs - 1);
+        const cx = x + 6 + i * spread + d * 0.55;
+        const cy = y + 4 + d * 0.4;
+        return `<ellipse cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" rx="3.4" ry="2.1" fill="${palette.top}" stroke="${palette.stroke}" stroke-width=".75" opacity="${palette.opacity}"></ellipse>`;
+      }).join('')
+    : '';
+  const grooveItems = grooves
+    ? Array.from({length: grooves}, (_, i) => {
+        const gy = y + d + 3 + i * 3.4;
+        return `<line x1="${x+d+4}" y1="${gy}" x2="${x+w+d-4}" y2="${gy}" stroke="${palette.stroke}" stroke-width="1.1" opacity=".5"></line>`;
+      }).join('')
+    : '';
+  return `
+    <ellipse cx="32" cy="${y+d+h+6}" rx="${Math.max(15, w/2+d)}" ry="4.5" fill="${palette.shadow}"></ellipse>
+    <polygon points="${frontPoints}" fill="${palette.front}" stroke="${palette.stroke}" stroke-width="1" opacity="${palette.opacity}"></polygon>
+    <polygon points="${sidePoints}" fill="${palette.side}" stroke="${palette.stroke}" stroke-width="1" opacity="${palette.opacity}"></polygon>
+    <polygon points="${topPoints}" fill="${palette.top}" stroke="${palette.stroke}" stroke-width="1" opacity="${palette.opacity}"></polygon>
+    ${r ? `<ellipse cx="${x+w+d-7}" cy="${y+d+h/2+1}" rx="${r}" ry="${Math.max(2.2, r*.7)}" fill="${palette.top}" stroke="${palette.stroke}" stroke-width=".9" opacity="${palette.opacity}"></ellipse>` : ''}
+    ${sideStud ? `<ellipse cx="${x+w+d-8}" cy="${y+d+h/2+2}" rx="5.2" ry="3.8" fill="${palette.top}" stroke="${palette.stroke}" stroke-width="1" opacity="${palette.opacity}"></ellipse><ellipse cx="${x+w+d-8}" cy="${y+d+h/2+2}" rx="2.3" ry="1.6" fill="${palette.front}" stroke="${palette.stroke}" stroke-width=".65" opacity="${palette.opacity}"></ellipse>` : ''}
+    ${clip ? `<path d="M${x+w+d-13} ${y+d-1} q5 -4 9 1" fill="none" stroke="${palette.stroke}" stroke-width="2" stroke-linecap="round" opacity="${palette.opacity}"></path>` : ''}
+    ${rail ? `<rect x="${x+d+5}" y="${y+d+2}" width="${w-10}" height="3" rx="1.5" fill="${palette.top}" stroke="${palette.stroke}" stroke-width=".75" opacity="${palette.opacity}"></rect>` : ''}
+    ${grooveItems}
+    ${studItems}
+  `;
+}
+function fallbackPartSvg(part){
+  const palette = partImagePalette(part);
   const label = `${part.description} (${part.color})`;
+  const desc = part.description.toLowerCase();
   const shape = part.shape_key;
-  const showStuds = !shape.includes('tile') && !shape.includes('bar') && !shape.includes('cone') && !shape.includes('panel') && !shape.includes('ingot') && !shape.includes('accessory');
+  const len = clamp(Math.round(part.length || 1), 1, 6);
+  const wid = clamp(Math.round(part.width || 1), 1, 4);
+  const studs = clamp(Math.min(len, 4) * Math.min(wid, 2), 1, 6);
+  const hasSideStud = /stud on side|studs on side|studs on 1 side|studs on 2 sides|studs on 4 sides/.test(desc);
+  const hasClip = /clip/.test(desc);
+  const hasRail = /rail|bar and pin|holder/.test(desc);
+  const isGrille = /grille|fluted/.test(desc);
+  const isQuarter = /quarter/.test(desc);
+  const isCurved = /curved|convex|pyramid|cheese/.test(desc);
+  const isInverted = /inverted/.test(desc);
+
   if (shape === 'bar' || shape === 'accessory') {
-    const y = shape === 'accessory' ? 26 : 24;
+    const y = /blade|wand/.test(desc) ? 24 : 25;
     return `<svg viewBox="0 0 64 48" role="img" aria-label="${escapeHtml(label)}">
-      <line x1="12" y1="${y}" x2="52" y2="${y}" stroke="${fill}" stroke-width="${shape === 'accessory' ? 6 : 5}" stroke-linecap="round" opacity="${opacity}"></line>
-      <line x1="12" y1="${y}" x2="52" y2="${y}" stroke="${stroke}" stroke-width="1.4" stroke-linecap="round" opacity="${opacity}"></line>
-      <circle cx="18" cy="${y}" r="${shape === 'accessory' ? 4.4 : 3.4}" fill="${top}" stroke="${stroke}" stroke-width="0.8" opacity="${opacity}"></circle>
-      <circle cx="46" cy="${y}" r="${shape === 'accessory' ? 3.2 : 2.4}" fill="${top}" stroke="${stroke}" stroke-width="0.8" opacity="${opacity}"></circle>
+      <ellipse cx="32" cy="36" rx="21" ry="4" fill="${palette.shadow}"></ellipse>
+      <line x1="16" y1="${y}" x2="49" y2="${y}" stroke="${palette.front}" stroke-width="6" stroke-linecap="round" opacity="${palette.opacity}"></line>
+      <line x1="16" y1="${y-1.5}" x2="49" y2="${y-1.5}" stroke="${palette.top}" stroke-width="2" stroke-linecap="round" opacity=".72"></line>
+      <ellipse cx="33" cy="${y}" rx="5" ry="4" fill="${palette.top}" stroke="${palette.stroke}" stroke-width=".9" opacity="${palette.opacity}"></ellipse>
     </svg>`;
   }
   if (shape === 'cone') {
     return `<svg viewBox="0 0 64 48" role="img" aria-label="${escapeHtml(label)}">
-      <ellipse cx="32" cy="35" rx="15" ry="5.5" fill="${shadow}" stroke="${stroke}" stroke-width="1" opacity="${opacity}"></ellipse>
-      <path d="M22 34 L29 14 Q32 10 35 14 L42 34 Z" fill="${fill}" stroke="${stroke}" stroke-width="1.1" opacity="${opacity}"></path>
-      <ellipse cx="32" cy="34" rx="10" ry="3.2" fill="${top}" stroke="${stroke}" stroke-width="0.8" opacity="${opacity}"></ellipse>
+      <ellipse cx="32" cy="38" rx="17" ry="4.5" fill="${palette.shadow}"></ellipse>
+      <path d="M20 34 L29 13 Q32 8 36 13 L45 34 Z" fill="${palette.front}" stroke="${palette.stroke}" stroke-width="1" opacity="${palette.opacity}"></path>
+      <path d="M29 13 Q32 8 36 13 L40 25 Q32 20 24 25 Z" fill="${palette.top}" opacity=".65"></path>
+      <ellipse cx="32" cy="34" rx="12" ry="3.8" fill="${palette.side}" stroke="${palette.stroke}" stroke-width=".8" opacity="${palette.opacity}"></ellipse>
     </svg>`;
   }
-  if (shape === 'panel') {
+  if (shape === 'round-brick' || shape === 'round-plate' || shape === 'round-tile' || isQuarter) {
+    const full = !isQuarter;
+    const h = shape === 'round-brick' ? 15 : 8;
     return `<svg viewBox="0 0 64 48" role="img" aria-label="${escapeHtml(label)}">
-      <rect x="18" y="12" width="28" height="24" rx="4" fill="${fill}" stroke="${stroke}" stroke-width="1.1" opacity="${opacity}"></rect>
-      <rect x="24" y="18" width="16" height="12" rx="2" fill="rgba(255,255,255,0.28)" stroke="${stroke}" stroke-width="0.9" opacity="${opacity}"></rect>
-      <rect x="16" y="34" width="32" height="4" rx="2" fill="${shadow}" opacity="${opacity}"></rect>
+      <ellipse cx="32" cy="${30+h/2}" rx="17" ry="4.5" fill="${palette.shadow}"></ellipse>
+      ${full
+        ? `<rect x="18" y="${23}" width="28" height="${h}" fill="${palette.front}" stroke="${palette.stroke}" stroke-width="1" opacity="${palette.opacity}"></rect><ellipse cx="32" cy="23" rx="14" ry="7" fill="${palette.top}" stroke="${palette.stroke}" stroke-width="1" opacity="${palette.opacity}"></ellipse><ellipse cx="32" cy="${23+h}" rx="14" ry="6" fill="${palette.side}" stroke="${palette.stroke}" stroke-width="1" opacity="${palette.opacity}"></ellipse>`
+        : `<path d="M22 31 A14 10 0 0 1 44 19 L44 31 Z" fill="${palette.front}" stroke="${palette.stroke}" stroke-width="1" opacity="${palette.opacity}"></path><path d="M23 25 A13 8 0 0 1 44 18 L44 25 Z" fill="${palette.top}" opacity=".7"></path>`}
+      ${shape !== 'round-tile' && !isQuarter ? `<ellipse cx="32" cy="21" rx="4.5" ry="2.6" fill="${palette.top}" stroke="${palette.stroke}" stroke-width=".8" opacity="${palette.opacity}"></ellipse>` : ''}
     </svg>`;
   }
-  if (shape === 'bracket') {
+  if (shape === 'slope' || isCurved) {
+    const points = isInverted ? "15,19 48,19 42,34 20,34" : "14,34 50,34 40,17 24,17";
     return `<svg viewBox="0 0 64 48" role="img" aria-label="${escapeHtml(label)}">
-      <path d="M18 13 H46 V22 H33 V35 H18 Z" fill="${fill}" stroke="${stroke}" stroke-width="1.1" opacity="${opacity}"></path>
-      <path d="M19 14 H45 V18 H29 V34 H19 Z" fill="${top}" opacity="0.45"></path>
-      <circle cx="25" cy="18" r="3" fill="${top}" stroke="${stroke}" stroke-width="0.7" opacity="${opacity}"></circle>
-      <circle cx="39" cy="18" r="3" fill="${top}" stroke="${stroke}" stroke-width="0.7" opacity="${opacity}"></circle>
-      <circle cx="25" cy="29" r="3" fill="${top}" stroke="${stroke}" stroke-width="0.7" opacity="${opacity}"></circle>
-    </svg>`;
-  }
-  if (shape === 'slope') {
-    return `<svg viewBox="0 0 64 48" role="img" aria-label="${escapeHtml(label)}">
-      <polygon points="14,34 48,34 42,18 22,18" fill="${fill}" stroke="${stroke}" stroke-width="1.1" opacity="${opacity}"></polygon>
-      <polygon points="22,18 42,18 38,14 26,14" fill="${top}" opacity="0.55"></polygon>
-      <circle cx="25" cy="19" r="2.8" fill="${top}" stroke="${stroke}" stroke-width="0.7" opacity="${opacity}"></circle>
-      <circle cx="37" cy="19" r="2.8" fill="${top}" stroke="${stroke}" stroke-width="0.7" opacity="${opacity}"></circle>
+      <ellipse cx="32" cy="39" rx="19" ry="4" fill="${palette.shadow}"></ellipse>
+      <polygon points="${points}" fill="${palette.front}" stroke="${palette.stroke}" stroke-width="1" opacity="${palette.opacity}"></polygon>
+      <path d="M24 17 H40 L45 24 H19 Z" fill="${palette.top}" opacity=".62"></path>
+      ${/cutout/.test(desc) ? `<path d="M28 24 h8 l3 6 h-14 z" fill="rgba(255,255,255,.45)" stroke="${palette.stroke}" stroke-width=".75"></path>` : ''}
     </svg>`;
   }
   if (shape === 'wedge') {
     const left = /left/i.test(part.description);
-    const points = left ? "14,35 47,35 35,18 14,18" : "17,35 50,35 50,18 29,18";
+    const topPoints = left ? "16,19 43,19 50,27 24,27" : "21,19 48,19 48,27 14,27";
+    const facePoints = left ? "24,27 50,27 43,36 16,36" : "14,27 48,27 48,36 21,36";
     return `<svg viewBox="0 0 64 48" role="img" aria-label="${escapeHtml(label)}">
-      <polygon points="${points}" fill="${fill}" stroke="${stroke}" stroke-width="1.1" opacity="${opacity}"></polygon>
-      <polygon points="${left ? '15,18 35,18 28,14 15,14' : '29,18 49,18 49,14 36,14'}" fill="${top}" opacity="0.5"></polygon>
-      <circle cx="${left ? '22' : '42'}" cy="20" r="3" fill="${top}" stroke="${stroke}" stroke-width="0.7" opacity="${opacity}"></circle>
+      <ellipse cx="32" cy="41" rx="20" ry="4" fill="${palette.shadow}"></ellipse>
+      <polygon points="${facePoints}" fill="${palette.front}" stroke="${palette.stroke}" stroke-width="1" opacity="${palette.opacity}"></polygon>
+      <polygon points="${topPoints}" fill="${palette.top}" stroke="${palette.stroke}" stroke-width="1" opacity="${palette.opacity}"></polygon>
+      <ellipse cx="${left ? 27 : 38}" cy="23" rx="3.5" ry="2.1" fill="${palette.top}" stroke="${palette.stroke}" stroke-width=".75" opacity="${palette.opacity}"></ellipse>
     </svg>`;
   }
-  if (shape === 'round-brick' || shape === 'round-plate' || shape === 'round-tile') {
-    const ry = shape === 'round-brick' ? 12 : shape === 'round-plate' ? 10 : 9;
+  if (shape === 'bracket') {
     return `<svg viewBox="0 0 64 48" role="img" aria-label="${escapeHtml(label)}">
-      <ellipse cx="32" cy="28" rx="15" ry="${ry}" fill="${fill}" stroke="${stroke}" stroke-width="1.1" opacity="${opacity}"></ellipse>
-      <ellipse cx="32" cy="22" rx="14" ry="${Math.max(4.5, ry-5)}" fill="${top}" opacity="0.55"></ellipse>
-      ${shape !== 'round-tile' ? `<circle cx="32" cy="22" r="4" fill="${top}" stroke="${stroke}" stroke-width="0.7" opacity="${opacity}"></circle>` : ''}
+      <ellipse cx="31" cy="39" rx="18" ry="4" fill="${palette.shadow}"></ellipse>
+      <path d="M18 13 H45 V23 H34 V36 H18 Z" fill="${palette.front}" stroke="${palette.stroke}" stroke-width="1" opacity="${palette.opacity}"></path>
+      <path d="M20 14 H44 V18 H29 V34 H20 Z" fill="${palette.top}" opacity=".62"></path>
+      <ellipse cx="26" cy="18" rx="3.4" ry="2.1" fill="${palette.top}" stroke="${palette.stroke}" stroke-width=".75" opacity="${palette.opacity}"></ellipse>
+      <ellipse cx="38" cy="18" rx="3.4" ry="2.1" fill="${palette.top}" stroke="${palette.stroke}" stroke-width=".75" opacity="${palette.opacity}"></ellipse>
+      <ellipse cx="25" cy="29" rx="3.4" ry="2.1" fill="${palette.top}" stroke="${palette.stroke}" stroke-width=".75" opacity="${palette.opacity}"></ellipse>
     </svg>`;
   }
   if (shape === 'ingot') {
     return `<svg viewBox="0 0 64 48" role="img" aria-label="${escapeHtml(label)}">
-      <path d="M17 31 L22 18 H42 L47 31 Z" fill="${fill}" stroke="${stroke}" stroke-width="1.1" opacity="${opacity}"></path>
-      <path d="M22 18 H42 L38 14 H26 Z" fill="${top}" opacity="0.55"></path>
+      <ellipse cx="32" cy="39" rx="17" ry="4" fill="${palette.shadow}"></ellipse>
+      <path d="M17 32 L22 20 H42 L47 32 Z" fill="${palette.front}" stroke="${palette.stroke}" stroke-width="1" opacity="${palette.opacity}"></path>
+      <path d="M22 20 H42 L38 15 H26 Z" fill="${palette.top}" stroke="${palette.stroke}" stroke-width=".8" opacity="${palette.opacity}"></path>
+      <rect x="24" y="23" width="16" height="4" rx="2" fill="${palette.side}" opacity=".6"></rect>
+    </svg>`;
+  }
+  if (shape === 'panel') {
+    return `<svg viewBox="0 0 64 48" role="img" aria-label="${escapeHtml(label)}">
+      ${isoBlockMarkup({x:18, y:13, w:26, d:8, h:20, palette, tile:true})}
+      <rect x="27" y="23" width="15" height="9" rx="2" fill="rgba(255,255,255,.34)" stroke="${palette.stroke}" stroke-width=".75" opacity="${palette.opacity}"></rect>
     </svg>`;
   }
 
-  const height = shape === 'brick' ? 18 : shape === 'plate' ? 12 : 10;
-  const y = 31 - height/2;
-  const studCount = showStuds ? clamp(Math.round(part.length || 1), 1, 4) : 0;
+  const isTile = shape === 'tile' || /tile/.test(desc);
+  const isBrick = shape === 'brick' || /brick/.test(desc);
+  const h = isBrick ? 16 : isTile ? 6 : 9;
+  const w = clamp(17 + len * 5.5, 22, 42);
+  const d = clamp(6 + wid * 2, 8, 14);
   return `<svg viewBox="0 0 64 48" role="img" aria-label="${escapeHtml(label)}">
-    <rect x="${x}" y="${y}" width="${baseW}" height="${height}" rx="5" fill="${fill}" stroke="${stroke}" stroke-width="1.1" opacity="${opacity}"></rect>
-    <rect x="${x+2}" y="${y+2}" width="${baseW-4}" height="${Math.max(4, Math.min(6, height/2))}" rx="3" fill="${top}" opacity="0.45"></rect>
-    ${studCount ? studsMarkup(studCount, x + 8, y + 4.5, top, stroke, opacity) : ''}
+    ${isoBlockMarkup({
+      x: Math.round((64 - w - d) / 2),
+      y: isBrick ? 12 : 17,
+      w,
+      d,
+      h,
+      palette,
+      studs: isTile ? 0 : studs,
+      tile: isTile,
+      sideStud: hasSideStud,
+      grooves: isGrille ? 3 : 0,
+      clip: hasClip,
+      rail: hasRail,
+    })}
   </svg>`;
 }
 
-function partSvg(part){
+function bricklinkImageUrl(part){
+  const colorId = bricklinkColors[part.color];
+  if (colorId === undefined) return '';
+  return `https://img.bricklink.com/ItemImage/PN/${colorId}/${encodeURIComponent(imagePartNumber(part))}.png`;
+}
+const partImageFallbacks = Object.fromEntries(
+  partsData
+    .map(part => [part.part_id, bricklinkImageUrl(part)])
+    .filter(([, url]) => Boolean(url))
+);
+function rebrickableLdrawImageUrl(part){
   const colorId = rebrickableColors[part.color] !== undefined ? rebrickableColors[part.color] : 0;
-  const url = `https://cdn.rebrickable.com/media/parts/ldraw/${colorId}/${part.part_number}.png`;
+  return `https://cdn.rebrickable.com/media/parts/ldraw/${colorId}/${encodeURIComponent(part.part_number)}.png`;
+}
+function partImageCandidates(part){
+  const primary = rebrickableLdrawImageUrl(part);
+  const fallback = partImageFallbacks[part.part_id];
+  const candidates = forceFallbackFirstPartNumbers.has(part.part_number)
+    ? [fallback]
+    : [primary, fallback];
+  return [...new Set(candidates.filter(Boolean))];
+}
+function handlePartImageError(img){
+  const fallbackSrc = img.dataset.fallbackSrc;
+  if (fallbackSrc) {
+    img.dataset.fallbackSrc = '';
+    img.src = fallbackSrc;
+    return;
+  }
+  img.style.display = 'none';
+  if (img.nextElementSibling) img.nextElementSibling.style.display = 'block';
+}
+window.handlePartImageError = handlePartImageError;
+function partSvg(part){
+  const [firstUrl, secondUrl] = partImageCandidates(part);
+  const alt = `${part.description} ${part.color}`;
+  if (!firstUrl) {
+    return `<div class="part-fallback-svg visible">${fallbackPartSvg(part)}</div>`;
+  }
   return `
-    <img class="part-isometric-img" src="${url}" alt="${escapeHtml(part.description)}" loading="lazy"
-         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+    <img class="part-isometric-img" src="${escapeHtml(firstUrl)}" alt="${escapeHtml(alt)}" loading="lazy"
+         ${secondUrl ? `data-fallback-src="${escapeHtml(secondUrl)}"` : ''}
+         onerror="window.handlePartImageError(this);">
     <div class="part-fallback-svg">
       ${fallbackPartSvg(part)}
     </div>
